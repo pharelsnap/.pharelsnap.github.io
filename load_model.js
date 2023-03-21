@@ -112,7 +112,7 @@ function join_images(imgs) {
     console.log("dm: " + device_max_dim + "rm: " + required_dim);
     let mscale = 1;
     if (required_dim > device_max_dim) {
-        mscale = 0.5 * (device_max_dim / required_dim);
+        mscale = 0.99 * (device_max_dim / required_dim);
     }
     console.log("mscale: ", mscale);
 
