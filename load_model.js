@@ -1,3 +1,9 @@
+var gl;
+var shoe_model = {};
+var shoe_vao;
+var shoe_shader;
+var done_preprocess = false;
+
 function loadShader(type, source) {
   let shader = gl.createShader(type);
   gl.shaderSource(shader, source);
@@ -89,16 +95,6 @@ function join_images(imgs) {
 }
 
 
-let gl;
-
-
-
-let shoe_model = {};
-let shoe_vao;
-
-let shoe_shader;
-
-let done_preprocess = false;
 function init_rendering(gltf_json, gltf_buffer, joined) {
 
     let attr_row_n_elem = (
@@ -343,68 +339,56 @@ function init_rendering(gltf_json, gltf_buffer, joined) {
 
 window.onload = function() {
 	// Create canvas
-	let canvas = document.createElement('canvas');
-	canvas.width = window.innerWidth;
-	canvas.height = window.innerHeight;
-	document.body.appendChild(canvas);
-
-	gl = canvas.getContext('webgl2');
-
-    let right_img = new Image();
-    let left_img = new Image();
-    let up_img = new Image();
-    let down_img = new Image();
-    let back_img = new Image();
-    let front_img = new Image();
 
 
-    let gltf_json;
-    let gltf_buffer;
+    var right_img = new Image();
+    var right_loaded = false;
+    var left_img = new Image();
+    var left_loaded = false;
+    var up_img = new Image();
+    var up_loaded = false;
+    var down_img = new Image();
+    var down_loaded = false;
+    var back_img = new Image();
+    var back_loaded = false;
+    var front_img = new Image();
+    var front_loaded = false;
 
-    // We take care of all the on_load one after another
-    // I format the callbacks to be flat so it will 
-    // look like my intent to be serielized
-    
-    // Load textures
+
+    var gltf_json = undefined;
+    var gltf_buffer = undefined;
+
+    loadBinaryFile("data/gltf_buffer.bin", (data) => {
+        gltf_buffer = data;
+        console.log(gltf_buffer);
+    });
+
+    loadTextFile("data/model.gltf", (data) => {
+        gltf_json = JSON.parse(data);
+    });
+
     right_img.onload = () => {
+        right_loaded = true;
+    };
+
     left_img.onload = () => {
+        left_loaded = true;
+    }
     up_img.onload = () => {
+        up_loaded = true;
+    }
+
     down_img.onload = () => {
+        down_loaded = true;
+    }
+
     back_img.onload = () => {
+        back_loaded = true;
+    }
     front_img.onload = () => {
+        front_loaded = true;
+    }
 
-    // Load model
-    loadTextFile("data/model.gltf", (json_data) => {
-    loadBinaryFile("data/gltf_buffer.bin", (gltf_buffer) => {
-
-    // This runs after everything is loaded
-
-
-    joined = join_images([
-        right_img,
-        left_img,
-        up_img,
-        down_img,
-        back_img,
-        front_img
-    ]);
-
-    gltf_json = JSON.parse(json_data);
-    init_rendering(gltf_json, gltf_buffer, joined);
-
-
-    // Closing the callback mess
-    });
-    });
-    };
-    };
-    };
-    };
-    };
-    };
-
-
-    // Set the src for the onload to be called
     right_img.src = "data/right.jpg";
     left_img.src = "data/left.jpg"
     up_img.src = "data/up.jpg"
@@ -413,11 +397,23 @@ window.onload = function() {
     front_img.src = "data/front.jpg"
 
 
+    // This runs after everything is loaded
     let state = "wait_load";
 
     // Main loop
     let last_time = Date.now();
     let periodic_time = 0;
+
+	let canvas = document.createElement('canvas');
+	canvas.width = window.innerWidth;
+	canvas.height = window.innerHeight;
+	document.body.appendChild(canvas);
+
+    window.addEventListener('resize', function() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+
     setInterval(function(){
         let delta_time = Date.now() - last_time;
         delta_time /= 1000;
@@ -429,23 +425,77 @@ window.onload = function() {
         let tt = 2 * Math.PI * periodic_time * 0.5;
         last_time = Date.now();
 
-	    gl.clearColor(
-            0.2 * Math.cos(2 * Math.PI * periodic_time * 0.32),
-            0.1 + 0.2 * Math.sin(2 * Math.PI * periodic_time * 0.1),
-            0.1 + 0.2 * Math.cos(2 * Math.PI * periodic_time * 0.12),
-            1.0);
-	    gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.clear(gl.DEPTH_BUFFER_BIT);
-
-        gl.enable(gl.DEPTH_TEST);
-        gl.depthFunc(gl.LESS);
-        gl.depthRange(0, 1);
-
         if (state == "wait_load") {
-            if (done_preprocess) {
-                state = "show_model";
+
+            // Draw load animation
+            (function() {
+                let ctx = canvas.getContext('2d');
+                let centerX = canvas.width / 2;
+                let centerY = canvas.height / 2;
+                let radius = 20;
+                let lineWidth = 5;
+                let circleColor = '#333';
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 2 * tt, 2 * tt + Math.PI);
+                ctx.lineWidth = lineWidth;
+                ctx.strokeStyle = circleColor;
+                ctx.stroke();
+            }());
+
+
+            if (
+                left_loaded && 
+                right_loaded && 
+                up_loaded && 
+                down_loaded && 
+                back_loaded && 
+                front_loaded &&
+                (gltf_json != undefined) &&
+                (gltf_buffer != undefined)
+            ) {
+                document.body.removeChild(canvas);
+                canvas = document.createElement('canvas');
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                document.body.appendChild(canvas);
+                
+                state = "init";
             }
+        } else if (state == "init" ) {
+
+
+            gl = canvas.getContext('webgl2');
+             
+            joined = join_images([
+                right_img,
+                left_img,
+                up_img,
+                down_img,
+                back_img,
+                front_img
+            ]);
+
+            init_rendering(gltf_json, gltf_buffer, joined);
+            state = "show_model"
         } else if (state == "show_model") {
+
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            let aspect = canvas.height / canvas.width;
+            gl.clearColor(
+                0.5 + 0.1 * Math.sin(2 * Math.PI * periodic_time * 0.1),
+                0.5 + 0.1 * Math.sin(2 * Math.PI * periodic_time * 0.1),
+                0.5 + 0.1 * Math.sin(2 * Math.PI * periodic_time * 0.1),
+                1.0);
+
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.clear(gl.DEPTH_BUFFER_BIT);
+
+            gl.enable(gl.DEPTH_TEST);
+            gl.depthFunc(gl.LESS);
+            gl.depthRange(0, 1);
+
             gl.bindVertexArray(shoe_vao);
             gl.useProgram(shoe_shader);
 
@@ -454,9 +504,11 @@ window.onload = function() {
             let cos = Math.cos;
             let sin = Math.sin;
 
-            let X = [cos(tt), 0, sin(tt)];
+            let angle = 0.2 * tt;
+
+            let X = [cos(angle), 0, sin(angle)];
             let Y = [0, 1, 0];
-            let Z = [-sin(tt), 0, cos(tt)];
+            let Z = [-sin(angle), 0, cos(angle)];
 
 
             for (let i =0; i < 3; ++i) {
@@ -465,12 +517,19 @@ window.onload = function() {
                 Z[i] *= 4;
             }
 
+
             let trans = new Float32Array([
                 X[0], X[1], X[2], 0,
                 Y[0], Y[1], Y[2], 0,
                 Z[0], Z[1], Z[2], 0,
                 0, 0, 0, 1,
             ]);
+
+            trans[0 * 4 + 0] *= aspect;
+            trans[1 * 4 + 0] *= aspect;
+            trans[2 * 4 + 0] *= aspect;
+            trans[3 * 4 + 0] *= aspect;
+
             gl.uniformMatrix4fv(uni_trans, false, trans);
 
             gl.drawElements(gl.TRIANGLES, shoe_model.elements.length, gl.UNSIGNED_INT, 0);
