@@ -232,12 +232,18 @@ function init_rendering(gltf_json, gltf_buffer, joined) {
         uniform sampler2D tex;
 
         void main() {
-          vec3 right_color = texture(tex, UV0).rgb;
-          vec3 left_color = texture(tex, UV1).rgb;
-          vec3 up_color = texture(tex, UV2).rgb;
-          vec3 down_color = texture(tex, UV3).rgb;
-          vec3 back_color = texture(tex, UV4).rgb;
-          vec3 front_color = texture(tex, UV5).rgb;
+  //        vec3 right_color = texture(tex, UV0).rgb;
+  //        vec3 left_color = texture(tex, UV1).rgb;
+  //        vec3 up_color = texture(tex, UV2).rgb;
+  //        vec3 down_color = texture(tex, UV3).rgb;
+  //        vec3 back_color = texture(tex, UV4).rgb;
+  //        vec3 front_color = texture(tex, UV5).rgb;
+  vec3 right_color = vec3(1, 1, 0);
+  vec3 left_color = vec3(1, 0, 0);
+  vec3 up_color = vec3(0, 0, 1);
+  vec3 down_color = vec3(0.2, 0.2, 0.2);
+  vec3 back_color = vec3(0, 1, 1);
+  vec3 front_color = vec3(0.2, 0.5, 1);
 
           float blend_vals[6];
           blend_vals[0] = Blend0.x;
@@ -335,6 +341,29 @@ function init_rendering(gltf_json, gltf_buffer, joined) {
     }());
 
     done_preprocess = true;
+}
+
+function matmul(m1, m2) {
+    let res = new Float32Array(16);
+    for(let row_t = 0; row_t < 4; ++row_t) {
+        for(let col_t = 0; col_t < 4; ++col_t) {
+            let sum = 0
+            for(let i = 0; i < 4; ++i) {
+                sum += m1[i * 4 + row_t] * m2[col_t * 4 + i];
+                
+            } 
+            res[col_t * 4 + row_t] = sum;
+        }
+    }
+    return res;
+}
+
+function identity4() {
+    let res = new Float32Array(16);
+    for(let i = 0; i < 4; ++i) {
+        res[i * 4 + i] = 1;
+    }
+    return res;
 }
 
 window.onload = function() {
@@ -464,8 +493,6 @@ window.onload = function() {
                 state = "init";
             }
         } else if (state == "init" ) {
-
-
             gl = canvas.getContext('webgl2');
              
             joined = join_images([
@@ -481,8 +508,8 @@ window.onload = function() {
             state = "show_model"
         } else if (state == "show_model") {
 
-            gl.viewport(0, 0, canvas.width, canvas.height);
-            let aspect = canvas.height / canvas.width;
+            gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+            let aspect = gl.canvas.height / gl.canvas.width;
             gl.clearColor(
                 0.5 + 0.1 * Math.sin(2 * Math.PI * periodic_time * 0.1),
                 0.5 + 0.1 * Math.sin(2 * Math.PI * periodic_time * 0.1),
@@ -511,12 +538,13 @@ window.onload = function() {
             let Z = [-sin(angle), 0, cos(angle)];
 
 
-            for (let i =0; i < 3; ++i) {
-                X[i] *= 4;
-                Y[i] *= 4;
-                Z[i] *= 4;
-            }
-
+            let scale = 4;
+            let scale_mat = new Float32Array([
+                scale, 0, 0, 0,
+                0, scale, 0, 0,
+                0, 0, scale, 0,
+                0, 0, 0, 1,
+            ]);
 
             let trans = new Float32Array([
                 X[0], X[1], X[2], 0,
@@ -525,10 +553,11 @@ window.onload = function() {
                 0, 0, 0, 1,
             ]);
 
-            trans[0 * 4 + 0] *= aspect;
-            trans[1 * 4 + 0] *= aspect;
-            trans[2 * 4 + 0] *= aspect;
-            trans[3 * 4 + 0] *= aspect;
+            let aspect_fix = identity4();
+            aspect_fix[0 * 4 + 0] = aspect;
+
+            trans = matmul(trans, scale_mat);
+            trans = matmul(aspect_fix, trans);
 
             gl.uniformMatrix4fv(uni_trans, false, trans);
 
