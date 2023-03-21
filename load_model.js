@@ -4,6 +4,46 @@ var shoe_vao;
 var shoe_shader;
 var done_preprocess = false;
 
+
+function check_max_canvas() {
+    let canvas = document.createElement('canvas');
+    let width = 800;
+    let height = 800;
+    let isRendered = true;
+
+    do {
+      canvas.width = width;
+      canvas.height = height;
+
+      const context = canvas.getContext('2d');
+      
+      // Draw a rectangle to ensure canvas is rendered
+      context.fillStyle = 'red';
+      context.fillRect(0, 0, width, height);
+
+      // Check if canvas is rendered
+
+      try {
+          const imageData = context.getImageData(0, 0, width, height);
+          const data = imageData.data;
+          if (data[0] !== 255) {
+            isRendered = false;
+          }
+      } catch(err) {
+          isRendered = false; 
+      }
+
+      // Increase canvas size
+      width *= 2;
+      height *= 2;
+    } while (isRendered);
+
+    return {w: width / 2, h: height / 2};
+
+
+    console.log(`Max canvas size supported: ${width / 2} x ${height / 2}`);
+}
+
 function loadShader(type, source) {
   let shader = gl.createShader(type);
   gl.shaderSource(shader, source);
@@ -57,7 +97,7 @@ function loadTextFile(url, callback) {
 
 
 function join_images(imgs) {
-    let mscale = 0.1;
+    let max_dim = check_max_canvas()
 
     let res_width = 0;
     let res_height = 0;
@@ -65,6 +105,16 @@ function join_images(imgs) {
         res_width = Math.max(img.width, res_width);
         res_height += img.height;
     });
+
+    let device_max_dim = max_dim.h;
+    let required_dim = res_height;
+
+    console.log("dm: " + device_max_dim + "rm: " + required_dim);
+    let mscale = 1;
+    if (required_dim > device_max_dim) {
+        mscale = 0.5 * (device_max_dim / required_dim);
+    }
+    console.log("mscale: ", mscale);
 
     let canvas = document.createElement('canvas');
     canvas.width = Math.ceil(mscale * res_width);
