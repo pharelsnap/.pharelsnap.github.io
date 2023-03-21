@@ -57,6 +57,7 @@ function loadTextFile(url, callback) {
 
 
 function join_images(imgs) {
+    let mscale = 0.1;
 
     let res_width = 0;
     let res_height = 0;
@@ -66,24 +67,28 @@ function join_images(imgs) {
     });
 
     let canvas = document.createElement('canvas');
-    canvas.width = res_width;
-    canvas.height = res_height;
+    canvas.width = Math.ceil(mscale * res_width);
+    canvas.height = Math.ceil(mscale * res_height);
     let ctx = canvas.getContext('2d');
+    console.log(ctx);
 
 
     let uv_rects = []
 
     let accum_height = 0;
     imgs.forEach((img) => {
-        ctx.drawImage(img, 0, accum_height);
+        let ww = img.width * mscale;
+        let hh = img.height * mscale;
+
+        ctx.drawImage(img, 0, accum_height, ww, hh);
 
         uv_rects.push({
             x: 0,
             y: accum_height / canvas.height,
-            w: img.width / canvas.width,
-            h: img.height / canvas.height})
+            w: ww / canvas.width,
+            h: hh / canvas.height})
 
-        accum_height += img.height;
+        accum_height += hh;
     });
 
     let joined_img = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -232,18 +237,18 @@ function init_rendering(gltf_json, gltf_buffer, joined) {
         uniform sampler2D tex;
 
         void main() {
-  //        vec3 right_color = texture(tex, UV0).rgb;
-  //        vec3 left_color = texture(tex, UV1).rgb;
-  //        vec3 up_color = texture(tex, UV2).rgb;
-  //        vec3 down_color = texture(tex, UV3).rgb;
-  //        vec3 back_color = texture(tex, UV4).rgb;
-  //        vec3 front_color = texture(tex, UV5).rgb;
-  vec3 right_color = vec3(1, 1, 0);
-  vec3 left_color = vec3(1, 0, 0);
-  vec3 up_color = vec3(0, 0, 1);
-  vec3 down_color = vec3(0.2, 0.2, 0.2);
-  vec3 back_color = vec3(0, 1, 1);
-  vec3 front_color = vec3(0.2, 0.5, 1);
+          vec3 right_color = texture(tex, UV0).rgb;
+          vec3 left_color = texture(tex, UV1).rgb;
+          vec3 up_color = texture(tex, UV2).rgb;
+          vec3 down_color = texture(tex, UV3).rgb;
+          vec3 back_color = texture(tex, UV4).rgb;
+          vec3 front_color = texture(tex, UV5).rgb;
+ // vec3 right_color = vec3(1, 1, 0);
+ // vec3 left_color = vec3(1, 0, 0);
+ // vec3 up_color = vec3(0, 0, 1);
+ // vec3 down_color = vec3(0.2, 0.2, 0.2);
+ // vec3 back_color = vec3(0, 1, 1);
+ // vec3 front_color = vec3(0.2, 0.5, 1);
 
           float blend_vals[6];
           blend_vals[0] = Blend0.x;
@@ -329,6 +334,11 @@ function init_rendering(gltf_json, gltf_buffer, joined) {
         let texture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, joined.img);
+        console.log("----");
+        console.log(gl.getError());
+        console.log(texture)
+        console.log(joined.img);
+        console.log(joined.img.width);
 
         // Set the texture parameters
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
