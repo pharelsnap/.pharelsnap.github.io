@@ -5,45 +5,6 @@ var shoe_shader;
 var done_preprocess = false;
 
 
-function check_max_canvas() {
-    let canvas = document.createElement('canvas');
-    let width = 800;
-    let height = 800;
-    let isRendered = true;
-
-    do {
-      canvas.width = width;
-      canvas.height = height;
-
-      const context = canvas.getContext('2d');
-      
-      // Draw a rectangle to ensure canvas is rendered
-      context.fillStyle = 'red';
-      context.fillRect(0, 0, width, height);
-
-      // Check if canvas is rendered
-
-      try {
-          const imageData = context.getImageData(0, 0, width, height);
-          const data = imageData.data;
-          if (data[0] !== 255) {
-            isRendered = false;
-          }
-      } catch(err) {
-          isRendered = false; 
-      }
-
-      // Increase canvas size
-      width *= 2;
-      height *= 2;
-    } while (isRendered);
-
-    return {w: width / 2, h: height / 2};
-
-
-    console.log(`Max canvas size supported: ${width / 2} x ${height / 2}`);
-}
-
 function loadShader(type, source) {
   let shader = gl.createShader(type);
   gl.shaderSource(shader, source);
@@ -97,49 +58,63 @@ function loadTextFile(url, callback) {
 
 
 function join_images(imgs) {
-    let max_dim = check_max_canvas()
 
     let res_width = 0;
     let res_height = 0;
-    imgs.forEach((img) => {
-        res_width = Math.max(img.width, res_width);
-        res_height += img.height;
-    });
 
-    let device_max_dim = max_dim.h;
+    for (let i = 0; i < 3; ++i) {
+        let img0 = imgs[i * 2 + 0];
+        let img1 = imgs[i * 2 + 1];
+        res_width = Math.max(res_width, img0.width + img1.width);
+        res_height += Math.max(res_height, Math.max(img0.height, img1.height));
+    }
+
+    let device_max_dim = 4096;
     let required_dim = res_height;
 
     console.log("dm: " + device_max_dim + "rm: " + required_dim);
     let mscale = 1;
     if (required_dim > device_max_dim) {
-        mscale = 0.99 * (device_max_dim / required_dim);
+        mscale = (device_max_dim / required_dim);
     }
     console.log("mscale: ", mscale);
 
     let canvas = document.createElement('canvas');
-    canvas.width = Math.ceil(mscale * res_width);
-    canvas.height = Math.ceil(mscale * res_height);
+    canvas.width = device_max_dim;
+    canvas.height = device_max_dim;
     let ctx = canvas.getContext('2d');
     console.log(ctx);
-
 
     let uv_rects = []
 
     let accum_height = 0;
-    imgs.forEach((img) => {
-        let ww = img.width * mscale;
-        let hh = img.height * mscale;
+    for(let i = 0; i < 3; ++i) {
+        let img0 = imgs[i * 2 + 0];
+        let img1 = imgs[i * 2 + 1];
 
-        ctx.drawImage(img, 0, accum_height, ww, hh);
+        let ww0 = img0.width * mscale;
+        let hh0 = img0.height * mscale;
 
+        let ww1 = img1.width * mscale;
+        let hh1 = img1.height * mscale;
+
+        ctx.drawImage(img0, 0, accum_height, ww0, hh0);
         uv_rects.push({
             x: 0,
             y: accum_height / canvas.height,
-            w: ww / canvas.width,
-            h: hh / canvas.height})
+            w: ww0 / canvas.width,
+            h: hh0 / canvas.height})
 
-        accum_height += hh;
-    });
+        ctx.drawImage(img1, ww0, accum_height, ww1, hh1);
+
+        uv_rects.push({
+            x: ww0 / canvas.width,
+            y: accum_height / canvas.height,
+            w: ww1 / canvas.width,
+            h: hh1 / canvas.height})
+
+        accum_height += Math.max(hh0, hh1);
+    }
 
     let joined_img = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
@@ -384,17 +359,14 @@ function init_rendering(gltf_json, gltf_buffer, joined) {
         let texture = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, joined.img);
-        console.log("----");
-        console.log(gl.getError());
-        console.log(texture)
-        console.log(joined.img);
-        console.log(joined.img.width);
+
+        gl.generateMipmap(gl.TEXTURE_2D);
 
         // Set the texture parameters
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
         let uni_sampler = gl.getUniformLocation(shoe_shader, "tex");
         gl.uniform1i(uni_sampler, 0);
