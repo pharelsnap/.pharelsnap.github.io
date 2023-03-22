@@ -268,12 +268,6 @@ function init_rendering(gltf_json, gltf_buffer, joined) {
           vec3 down_color = texture(tex, UV3).rgb;
           vec3 back_color = texture(tex, UV4).rgb;
           vec3 front_color = texture(tex, UV5).rgb;
- // vec3 right_color = vec3(1, 1, 0);
- // vec3 left_color = vec3(1, 0, 0);
- // vec3 up_color = vec3(0, 0, 1);
- // vec3 down_color = vec3(0.2, 0.2, 0.2);
- // vec3 back_color = vec3(0, 1, 1);
- // vec3 front_color = vec3(0.2, 0.5, 1);
 
           float blend_vals[6];
           blend_vals[0] = Blend0.x;
