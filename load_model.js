@@ -421,7 +421,6 @@ window.onload = function() {
 
     loadBinaryFile("data/gltf_buffer.bin", (data) => {
         gltf_buffer = data;
-        console.log(gltf_buffer);
     });
 
     loadTextFile("data/model.gltf", (data) => {
