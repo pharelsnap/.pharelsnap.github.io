@@ -475,7 +475,7 @@ window.onload = function() {
         canvas.height = window.innerHeight;
     });
 
-    setInterval(function(){
+    function update() {
         let delta_time = Date.now() - last_time;
         delta_time /= 1000;
         periodic_time += delta_time;
@@ -525,7 +525,9 @@ window.onload = function() {
                 state = "init";
             }
         } else if (state == "init" ) {
-            gl = canvas.getContext('webgl2');
+            gl = canvas.getContext('webgl2', { antialias: true });
+            gl.enable(gl.MULTISAMPLE);
+            gl.sampleCoverage(0.5, false);
              
             joined = join_images([
                 right_img,
@@ -595,5 +597,8 @@ window.onload = function() {
 
             gl.drawElements(gl.TRIANGLES, shoe_model.elements.length, gl.UNSIGNED_INT, 0);
         }
-    }, 1);
+        requestAnimationFrame(update);
+    };
+
+    requestAnimationFrame(update);
 };
