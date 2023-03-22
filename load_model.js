@@ -475,7 +475,23 @@ window.onload = function() {
         canvas.height = window.innerHeight;
     });
 
+    let mouse = {
+        x: 0, y: 0,
+        prev_x: 0, prev_y: 0,
+        dx: 0, dy: 0,
+        is_pressed: false, is_down: false};
+    let S = {
+        v_angle: Math.PI / 2,
+        h_angle: 0,
+        interaction: "auto_rotate"
+    };
+
     function update() {
+        mouse.dx = mouse.x - mouse.prev_x;
+        mouse.dy = mouse.y - mouse.prev_y;
+        mouse.prev_x = mouse.x;
+        mouse.prev_y = mouse.y;
+
         let delta_time = Date.now() - last_time;
         delta_time /= 1000;
         periodic_time += delta_time;
@@ -528,6 +544,93 @@ window.onload = function() {
             gl = canvas.getContext('webgl2', { antialias: true });
             gl.enable(gl.MULTISAMPLE);
             gl.sampleCoverage(0.5, false);
+
+            // Listen to mouse/touch interaction
+            //
+            var touch_id = -1;
+
+            document.addEventListener('mousemove', function(event) {
+                
+                let rect = canvas.getBoundingClientRect();
+                let x = event.clientX - rect.left;
+                x /= rect.width;
+
+                let y = event.clientY - rect.top;
+                y /= rect.height;
+
+                mouse.x = x;
+                mouse.y = y;
+            });
+            
+            document.addEventListener('touchmove', function(event) {
+                let touch = event.touches[0];
+                if (touch.identifier == touch_id) {
+                    let rect = canvas.getBoundingClientRect();
+                    let x = touch.clientX - rect.left;
+                    x /= rect.width;
+
+                    let y = touch.clientY - rect.top;
+                    y /= rect.height;
+
+                    mouse.x = x;
+                    mouse.y = y;
+                }
+            });
+            
+
+            document.addEventListener('mousedown', function(event) {
+              if (event.button === 0) {
+                  mouse.is_pressed = true;
+                  mouse.is_down = true;
+              }
+            });
+
+            document.addEventListener('touchstart', function(event) {
+              if (touch_id == -1) {
+                  let touch = event.touches[0];
+                  touch_id = touch.identifier;
+
+                  let rect = canvas.getBoundingClientRect();
+                  let x = touch.clientX - rect.left;
+                  x /= rect.width;
+
+                  let y = touch.clientY - rect.top;
+                  y /= rect.height;
+
+                  mouse.prev_x = x;
+                  mouse.prev_y = y;
+                  mouse.x = x;
+                  mouse.y = y;
+
+                  mouse.is_pressed = true;
+                  mouse.is_down = true;
+              }
+            });
+
+            document.addEventListener('mouseup', function(event) {
+              if (event.button === 0) {
+                  mouse.is_down = false;
+              }
+            });
+
+            document.addEventListener('touchend', function(event) {
+
+                let touch = event.changedTouches[0];
+                if (touch.identifier == touch_id) {
+                    touch_id = -1;
+                    mouse.is_down = false;
+                }
+            });
+
+            canvas.addEventListener('mouseout', function(event) {
+                mouse.is_down = false;
+            });
+
+            document.addEventListener('touchcancel', function(event) {
+
+               mouse.is_down = false;
+               touch_id = -1;
+            });
              
             joined = join_images([
                 right_img,
@@ -565,13 +668,6 @@ window.onload = function() {
             let cos = Math.cos;
             let sin = Math.sin;
 
-            let angle = 0.2 * tt;
-
-            let X = [cos(angle), 0, sin(angle)];
-            let Y = [0, 1, 0];
-            let Z = [-sin(angle), 0, cos(angle)];
-
-
             let scale = 4;
             let scale_mat = new Float32Array([
                 scale, 0, 0, 0,
@@ -580,23 +676,69 @@ window.onload = function() {
                 0, 0, 0, 1,
             ]);
 
-            let trans = new Float32Array([
-                X[0], X[1], X[2], 0,
-                Y[0], Y[1], Y[2], 0,
-                Z[0], Z[1], Z[2], 0,
-                0, 0, 0, 1,
-            ]);
+            if (S.interaction == "auto_rotate") {
+                S.h_angle += 0.2 * delta_time;
+                if (S.h_angle > Math.PI * 2) {
+                    S.h_angle -= Math.PI * 2;
+                }
+
+                if (mouse.is_pressed) {
+                    S.interaction = "manual_rotate";
+                    S.flip_vrot = Math.cos(S.h_angle) < 0;
+                }
+            } else if (S.interaction == "manual_rotate") {
+                if (!mouse.is_down) {
+                    S.interaction = "auto_rotate";
+                }
+
+                S.h_angle += 5 * mouse.dx;
+                if (S.flip_vrot) {
+                    S.v_angle += 5 * mouse.dy;
+                } else {
+                    S.v_angle -= 5 * mouse.dy;
+                }
+
+
+            }
+
+            let trans_v;
+            (function(){
+                let X = [1, 0, 0];
+                let Y = [0, cos(S.v_angle), sin(S.v_angle)];
+                let Z = [0, -sin(S.v_angle), cos(S.v_angle)];
+                trans_v = new Float32Array([
+                    X[0], X[1], X[2], 0,
+                    Y[0], Y[1], Y[2], 0,
+                    Z[0], Z[1], Z[2], 0,
+                    0, 0, 0, 1,
+                ]);
+            }());
+
+            let trans_h;
+            (function(){
+                let X = [cos(S.h_angle), 0, sin(S.h_angle)];
+                let Y = [0, 1, 0];
+                let Z = [-sin(S.h_angle), 0, cos(S.h_angle)];
+                trans_h = new Float32Array([
+                    X[0], X[1], X[2], 0,
+                    Y[0], Y[1], Y[2], 0,
+                    Z[0], Z[1], Z[2], 0,
+                    0, 0, 0, 1,
+                ]);
+            }());
 
             let aspect_fix = identity4();
             aspect_fix[0 * 4 + 0] = aspect;
 
-            trans = matmul(trans, scale_mat);
+            let trans = matmul(trans_v, scale_mat);
+            trans = matmul(trans_h, trans);
             trans = matmul(aspect_fix, trans);
 
             gl.uniformMatrix4fv(uni_trans, false, trans);
 
             gl.drawElements(gl.TRIANGLES, shoe_model.elements.length, gl.UNSIGNED_INT, 0);
         }
+        mouse.is_pressed = false;
         requestAnimationFrame(update);
     };
 
