@@ -5,6 +5,7 @@ var shoe_shader;
 var done_preprocess = false;
 
 
+
 function loadShader(type, source) {
   let shader = gl.createShader(type);
   gl.shaderSource(shader, source);
@@ -393,6 +394,8 @@ function identity4() {
 }
 
 window.onload = function() {
+    let model_path = document.getElementById("model_path").getAttribute("path");
+
 	// Create canvas
 
 
@@ -413,11 +416,11 @@ window.onload = function() {
     var gltf_json = undefined;
     var gltf_buffer = undefined;
 
-    loadBinaryFile("data/gltf_buffer.bin", (data) => {
+    loadBinaryFile(model_path + "/gltf_buffer.bin", (data) => {
         gltf_buffer = data;
     });
 
-    loadTextFile("data/model.gltf", (data) => {
+    loadTextFile(model_path + "/model.gltf", (data) => {
         gltf_json = JSON.parse(data);
     });
 
@@ -443,12 +446,12 @@ window.onload = function() {
         front_loaded = true;
     }
 
-    right_img.src = "data/right.jpg";
-    left_img.src = "data/left.jpg"
-    up_img.src = "data/up.jpg"
-    down_img.src = "data/down.jpg"
-    back_img.src = "data/back.jpg"
-    front_img.src = "data/front.jpg"
+    right_img.src = model_path +  "/right.jpg";
+    left_img.src = model_path +  "/left.jpg"
+    up_img.src = model_path +  "/up.jpg"
+    down_img.src = model_path +  "/down.jpg"
+    back_img.src = model_path +  "/back.jpg"
+    front_img.src = model_path +  "/front.jpg"
 
 
     // This runs after everything is loaded
