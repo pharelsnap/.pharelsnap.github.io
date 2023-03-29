@@ -186,10 +186,6 @@ function init_rendering(gltf_json, gltf_buffer, joined) {
                 let u = uv_arr[i * 2 + 0];
                 let v = uv_arr[i * 2 + 1];
 
-                if (i_uv_arr == 0){
-                    v = 1 - v;
-                }
-
                 u = uv_rect.x + u * uv_rect.w;
                 v = uv_rect.y + v * uv_rect.h;
                 shoe_model.attr[it++] = u;
