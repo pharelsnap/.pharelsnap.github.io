@@ -257,6 +257,18 @@ function button(icon, btn_rect, is_enabled) {
   return is_pressed && I.is_lmouse_released;
 }
 
+
+let drag_border_pixels = 5;
+function drag_area(d_rect) {
+  let wd = window_dims();
+  return ({
+    x: d_rect.x - 2 * (drag_border_pixels / wd.w),
+    y: d_rect.y - 2 * (drag_border_pixels / wd.h),
+    w: d_rect.w +  2 *  drag_border_pixels / wd.w,
+    h: d_rect.h +  2 *  drag_border_pixels / wd.h
+  });
+}
+
 function drag_into(d_rect) {
   let res = {
     was_dragged: false,
@@ -270,11 +282,11 @@ function drag_into(d_rect) {
   };
 
   if (drg.is_drag_potential) {
-    drg.is_hovered = is_in_rect(I.mpos, d_rect);
+    drg.is_hovered = is_in_rect(I.mpos, drag_area(d_rect));
   }
 
   if (I.was_drag_dropped) {
-    if (is_in_rect(I.mpos, d_rect)) {
+    if (is_in_rect(I.mpos, drag_area(d_rect))) {
       res.was_dragged = true;
       res.dragged_file = I.dragged_file;
     }
@@ -638,17 +650,11 @@ function render_put_here_icon(rect, color) {
   let wd = window_dims();
 
   let border_radius = Math.floor(rect.w * 0.1 * window_dims().w);
-  let border_pixels = 5;
   let div = create_div();
-  div.style.border = `${border_pixels}px dashed #000000`;
+  div.style.border = `${drag_border_pixels}px dashed #000000`;
   div.style.borderRadius = border_radius + 'px';
   div.style.backgroundColor = rgba2color_str(color);
-
-  rect.x -= 2 * (border_pixels / wd.w);
-  rect.y -= 2 * (border_pixels / wd.h);
-  rect.w +=  2 *  border_pixels / wd.w;
-  rect.h +=  2 *  border_pixels / wd.h;
-  set_div_size_to_rect(div, rect);
+  set_div_size_to_rect(div, drag_area(rect));
 }
 
 
